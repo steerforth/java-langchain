@@ -3,16 +3,12 @@ package com.steer.langchain.controller;
 import com.steer.langchain.config.AiConfig;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.community.model.dashscope.QwenStreamingChatModel;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.TokenStream;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,6 +38,9 @@ public class ChatController {
 
     @Autowired
     private AiConfig.ToolAssistant toolAassistant;
+
+    @Autowired
+    private AiConfig.RagAssistant ragAassistant;
     /**
      * 普通对话
      * @param msg
@@ -122,6 +121,24 @@ public class ChatController {
     @RequestMapping(value = "/toolStream",produces = "text/stream;charset=UTF-8")
     public Flux<String> toolStream(@RequestParam(defaultValue = "你是谁") String msg,Integer userId) {
         TokenStream stream = toolAassistant.stream(userId,msg, LocalDate.now().toString());
+        Flux<String> flux = Flux.create(f -> {
+            stream.onPartialResponse(s -> f.next(s))
+                    .onCompleteResponse(chatResponse -> f.complete())
+                    .onError(throwable -> f.error(throwable))
+                    .start();
+        });
+        return flux;
+    }
+
+
+    /**
+     * 调用本地知识库
+     * @param msg
+     * @return
+     */
+    @RequestMapping(value = "/ragStream",produces = "text/stream;charset=UTF-8")
+    public Flux<String> ragStream(@RequestParam(defaultValue = "你是谁") String msg,Integer userId) {
+        TokenStream stream = ragAassistant.stream(userId,msg);
         Flux<String> flux = Flux.create(f -> {
             stream.onPartialResponse(s -> f.next(s))
                     .onCompleteResponse(chatResponse -> f.complete())

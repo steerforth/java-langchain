@@ -1,11 +1,17 @@
 package com.steer.langchain.config;
 
 import com.steer.langchain.functionCall.ToolService;
+import dev.langchain4j.community.model.dashscope.QwenEmbeddingModel;
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.*;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -82,5 +88,33 @@ public class AiConfig {
         return assistant;
     }
 
+    /**
+     * 调用RAG 知识库
+     */
+    public interface RagAssistant{
+        TokenStream stream(@MemoryId int memoryId,@UserMessage String msg);
+    }
 
+    @Bean
+    public EmbeddingStore embeddingStore(){
+        return new InMemoryEmbeddingStore();
+    }
+
+    @Bean
+    public RagAssistant ragAassistant(ChatLanguageModel chatLanguageModel, StreamingChatLanguageModel streamingChatLanguageModel, EmbeddingStore embeddingStore, QwenEmbeddingModel qwenEmbeddingModel){
+        //内容检索器
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(qwenEmbeddingModel)
+                .maxResults(5)
+                .minScore(0.6)
+                .build();
+
+        RagAssistant assistant = AiServices.builder(RagAssistant.class).chatLanguageModel(chatLanguageModel)
+                .streamingChatLanguageModel(streamingChatLanguageModel)
+                .contentRetriever(contentRetriever) //添加知识库
+                .chatMemoryProvider(memoryId->MessageWindowChatMemory.builder().maxMessages(10).id(memoryId).build())
+                .build();
+        return assistant;
+    }
 }
