@@ -2,7 +2,6 @@ package com.steer.langchain.config;
 
 import com.steer.langchain.functionCall.ToolService;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -60,7 +59,7 @@ public class AiConfig {
     }
 
     /**
-     * 普通对话
+     * 调用functionCall
      */
     public interface ToolAssistant{
         //流式响应   cur_date自定义变量填充
@@ -82,4 +81,6 @@ public class AiConfig {
                 .build();
         return assistant;
     }
+
+
 }
